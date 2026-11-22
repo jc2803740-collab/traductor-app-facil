@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#064e3b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Isra y Goiko" />
+  <title>🎓 Entrenador de Inglés para Isra y Goiko</title>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
+
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #1e293b;
+      --panel-soft: #263449;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #38bdf8;
+      --emerald: #10b981;
+      --ok: #22c55e;
+      --ok-bg: rgba(34, 197, 94, 0.16);
+      --warn: #f59e0b;
+      --warn-bg: rgba(245, 158, 11, 0.18);
+      --err: #ef4444;
+      --err-bg: rgba(239, 68, 68, 0.18);
+    }
+
+    html {
+      font-size: 18px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      background: radial-gradient(circle at top, #064e3b 0%, #0b1120 62%);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      line-height: 1.5;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    button, select, input {
+      font-family: inherit;
+      touch-action: manipulation;
+    }
+
+    .hidden { display: none !important; }
+
+    .quick-shell {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 14px 16px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(6, 95, 70, 0.92), rgba(14, 116, 144, 0.9));
+      border: 1px solid rgba(110, 231, 183, 0.5);
+      border-radius: 18px;
+      padding: 14px 18px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+    }
+    .hero-banner h1 {
+      margin: 0;
+      font-size: clamp(1.15rem, 3.8vw, 1.55rem);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .hero-banner p {
+      margin: 4px 0 0 0;
+      font-size: 0.85rem;
+      color: #d1fae5;
+      font-weight: 600;
+    }
+
+    /* Barra superior sencilla estilo Modo Rápido */
+    .quick-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .top-left, .top-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .easy-badge {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #fde047;
+      padding: 5px 11px;
+      border-radius: 9px;
+      background: rgba(250, 204, 21, 0.14);
+      border: 1px solid rgba(250, 204, 21, 0.4);
+    }
+
+    .dir-btn {
+      background: linear-gradient(135deg, #059669, #0284c7);
+      color: #ffffff;
+      border: none;
+      border-radius: 999px;
+      padding: 9px 16px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
+    }
+    .dir-btn:active { transform: scale(0.98); }
+
+    .zoom-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 3px 5px;
+    }
+    .zoom-btn {
+      background: var(--panel-soft);
+      color: #e2e8f0;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 0.84rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    select.mini-select {
+      background: #0f172a;
+      color: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 11px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .fav-icon-btn {
+      background: #0f172a;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      min-height: 40px;
+    }
+    .fav-icon-btn.fav-active {
+      color: #fbbf24;
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.16);
+    }
+
+    .warning-banner {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn);
+      color: #fde68a;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
+
+    /* Tarjeta protagonista: SOLO LA FRASE EN GRANDE */
+    .phrase-card {
+      background: var(--panel);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      border-radius: 20px;
+      padding: 20px 20px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.36);
+    }
+
+    .phrase-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .dir-instruction {
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6ee7b7;
+    }
+
+    .phrase-tools {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .counter-pill {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid var(--border);
+      padding: 5px 11px;
+      border-radius: 999px;
+    }
+
+    .btn-mini {
+      background: var(--panel-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 38px;
+    }
+    .btn-mini:active { background: #334155; }
+
+    .auto-audio-lbl {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.84rem;
+      color: #cbd5e1;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .phrase-text {
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(52, 211, 153, 0.26);
+      border-radius: 16px;
+      padding: 28px 20px;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #ffffff;
+      text-align: center;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
+
+    .primary-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .btn-speak-main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 16px;
+      font-size: 1.08rem;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 56px;
+      box-shadow: 0 5px 18px rgba(37, 99, 235, 0.36);
+    }
+    .btn-speak-main.listening {
+      background: linear-gradient(135deg, #dc2626, #ea580c);
+      animation: pulseMic 1.3s infinite;
+    }
+
+    @keyframes pulseMic {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.65); }
+      70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    .btn-reveal-main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #059669, #0d9488);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 16px;
+      font-size: 1.08rem;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 56px;
+      box-shadow: 0 5px 18px rgba(16, 185, 129, 0.32);
+    }
+
+    .live-status {
+      padding: 12px 15px;
+      border-radius: 12px;
+      border: 1px solid #f97316;
+      background: rgba(249, 115, 22, 0.14);
+      color: #ffedd5;
+      font-size: 1.02rem;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .live-status.done {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.14);
+      color: #e0f2fe;
+      font-weight: 700;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .input-row input {
+      flex: 1;
+      min-width: 200px;
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .input-row input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn-check {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 46px;
+    }
+
+    /* Panel de Resultado, Corrección y Otras Soluciones */
+    .result-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
+    }
+
+    .score-banner {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .score-circle {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.28rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      border: 4px solid var(--ok);
+    }
+    .score-high { border-color: var(--ok); color: #86efac; background: var(--ok-bg); }
+    .score-mid  { border-color: var(--warn); color: #fde68a; background: var(--warn-bg); }
+    .score-low  { border-color: var(--err); color: #fca5a5; background: var(--err-bg); }
+
+    .score-verdict { margin: 0 0 4px 0; font-size: 1.15rem; font-weight: 800; }
+    .score-said { margin: 0; font-size: 0.98rem; color: #cbd5e1; }
+
+    .direct-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: rgba(16, 185, 129, 0.13);
+      border: 1px solid rgba(52, 211, 153, 0.38);
+      border-radius: 13px;
+      padding: 12px 15px;
+      font-size: 0.98rem;
+      color: #a7f3d0;
+    }
+
+    .block-card {
+      background: rgba(15, 23, 42, 0.64);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px 16px;
+    }
+    .block-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .solution-highlight {
+      font-size: 1.44rem;
+      font-weight: 800;
+      color: #f0fdf4;
+      line-height: 1.42;
+    }
+
+    .tokens-wrap { display: flex; flex-wrap: wrap; gap: 7px; }
+    .tok { padding: 6px 11px; border-radius: 9px; font-size: 1.04rem; font-weight: 700; }
+    .tok-ok { background: var(--ok-bg); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.38); }
+    .tok-close { background: var(--warn-bg); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.48); }
+    .tok-wrong { background: var(--err-bg); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.48); }
+    .tok-missing { background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px dashed #38bdf8; }
+    .tok-extra { background: rgba(148, 163, 184, 0.14); color: #94a3b8; text-decoration: line-through; }
+
+    .word-chip {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #475569;
+      border-radius: 9px;
+      padding: 6px 12px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .word-chip:active { background: #0284c7; border-color: #38bdf8; }
+
+    .alerts-list { display: flex; flex-direction: column; gap: 9px; }
+    .alert-item {
+      background: rgba(239, 68, 68, 0.15);
+      border-left: 5px solid #ef4444;
+      padding: 12px 15px;
+      border-radius: 10px;
+      font-size: 0.98rem;
+    }
+    .alert-item strong { color: #fca5a5; display: block; margin-bottom: 4px; }
+    .alert-item p { margin: 0; color: #f1f5f9; }
+
+    .explanation-box {
+      background: rgba(56, 189, 248, 0.12);
+      border-left: 5px solid var(--primary);
+      padding: 12px 15px;
+      border-radius: 10px;
+      font-size: 1rem;
+      color: #e0f2fe;
+      line-height: 1.48;
+    }
+
+    .alts-card {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.34);
+      padding: 15px 16px;
+      border-radius: 14px;
+      font-size: 1.05rem;
+      color: #dcfce7;
+    }
+    .alts-card strong { color: #86efac; }
+    .alts-card ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .alt-en-sub {
+      margin-top: 11px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.35);
+      font-size: 0.98rem;
+      color: #bae6fd;
+    }
+    .btn-inline-play {
+      background: rgba(15, 23, 42, 0.78);
+      color: #7dd3fc;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 7px;
+      padding: 3px 9px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 6px;
+    }
+
+    /* Pie de navegación Modo Rápido */
+    .quick-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .nav-left { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn-next-fast {
+      background: linear-gradient(135deg, #059669, #0284c7);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 22px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    /* Modal sencillo para ver QR / Instalar en móvil sin ensuciar la pantalla */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 17, 32, 0.88);
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-card {
+      background: var(--panel);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      border-radius: 20px;
+      max-width: 520px;
+      width: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 640px) {
+      .primary-actions { grid-template-columns: 1fr; }
+      .phrase-text { font-size: 1.46rem; padding: 20px 14px; }
+      .btn-next-fast { flex: 1; }
+      .shortcuts-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="quick-shell">
+    <!-- CABECERA PRINCIPAL PERSONALIZADA -->
+    <div class="hero-banner">
+      <h1>🎓 ENTRENADOR DE INGLÉS PARA ISRA Y GOIKO</h1>
+      <p>Vocabulario y Frases del Libro (Units 3, 4 y 5) + Inglés Práctico por Voz</p>
+    </div>
+
+    <!-- BARRA SUPERIOR MODO RÁPIDO FÁCIL -->
+    <header class="quick-topbar">
+      <div class="top-left">
+        <button id="btnDirToggle" type="button" class="dir-btn" title="Cambiar sentido de traducción">
+          🇬🇧 Inglés → 🇪🇸 Español ⇄
+        </button>
+        <div class="zoom-group" title="Tamaño de letra">
+          <button id="btnFontDown" type="button" class="zoom-btn">A−</button>
+          <button id="btnFontUp" type="button" class="zoom-btn">A+</button>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <select id="catSelect" class="mini-select" aria-label="Elegir tema">
+          <option value="all">🌍 Todos los temas</option>
+          <option value="repaso_isra">🔥 REPASO ISRA (Libro Units 3, 4 y 5)</option>
+          <option value="greetings">👋 Saludos y Presentaciones</option>
+          <option value="daily">🏠 Casa, Familia y Rutina</option>
+          <option value="food">🍽️ Cafetería y Restaurante</option>
+          <option value="shopping">🛍️ Tiendas y Compras</option>
+          <option value="travel">✈️ Viajes, Hotel y Calle</option>
+          <option value="time_health">🕒 Horas, Clima y Salud</option>
+          <option value="essentials">💬 Frases Imprescindibles</option>
+          <option value="review">★ Mis marcadas / Fallos</option>
+        </select>
+
+        <select id="levelSelect" class="mini-select" aria-label="Elegir nivel">
+          <option value="ALL">Año 1 y 2</option>
+          <option value="A1">🟢 Año 1 (A1)</option>
+          <option value="A2">🔵 Año 2 (A2)</option>
+        </select>
+
+        <button id="btnFav" type="button" class="fav-icon-btn" title="Marcar para repasar (★)">☆</button>
+        <button id="btnOpenQr" type="button" class="btn-mini" title="Instalar en móvil Samsung o iPhone">📲 Móvil</button>
+      </div>
+    </header>
+
+    <div id="browserWarning" class="warning-banner hidden"></div>
+
+    <!-- TARJETA PROTAGONISTA -->
+    <main id="phraseCard" class="phrase-card">
+      <div class="phrase-meta">
+        <span id="promptDirectionLabel" class="dir-instruction">🇬🇧 TRADUCE ESTA FRASE AL ESPAÑOL:</span>
+        <div class="phrase-tools">
+          <span id="cardCounter" class="counter-pill">1 / 232</span>
+          <button id="btnSpeakPrompt" type="button" class="btn-mini" title="Escuchar pronunciación clara">🔊 Oír</button>
+          <button id="btnSpeakPromptSlow" type="button" class="btn-mini" title="Escuchar muy despacio">🐢 Despacio</button>
+          <label id="autoSpeakWrap" class="auto-audio-lbl">
+            <input type="checkbox" id="autoSpeakCheck" /> Auto 🔊
+          </label>
+        </div>
+      </div>
+
+      <div id="promptSentence" class="phrase-text">Cargando frase...</div>
+
+      <div class="primary-actions">
+        <button id="btnMic" type="button" class="btn-speak-main">
+          <span id="micLabel">🎙️ Hablar en Español</span>
+        </button>
+        <button id="btnReveal" type="button" class="btn-reveal-main">
+          👁️ Ver Resultado y Soluciones
+        </button>
+      </div>
+
+      <div id="liveStatus" class="live-status hidden"></div>
+
+      <div class="input-row">
+        <input
+          id="manualInput"
+          type="text"
+          enterkeyhint="done"
+          autocomplete="off"
+          placeholder="O escribe tu traducción aquí y pulsa Corregir..."
+        />
+        <button id="btnEvaluateText" type="button" class="btn-check">✅ Corregir</button>
+      </div>
+    </main>
+
+    <!-- PANEL DE RESULTADO Y CORRECCIÓN -->
+    <section id="resultPanel" class="result-panel hidden">
+      <div id="scoreBanner" class="score-banner hidden">
+        <div id="scoreCircle" class="score-circle score-high">
+          <span id="scoreValue">95%</span>
+        </div>
+        <div>
+          <h3 id="scoreVerdict" class="score-verdict">¡Muy bien!</h3>
+          <p id="scoreUserSaid" class="score-said"></p>
+        </div>
+      </div>
+
+      <div id="directBanner" class="direct-banner hidden">
+        <span><strong>✅ Solución Directa</strong> — Comprueba tu traducción:</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btnMarkKnown" type="button" class="btn-mini">👍 La sabía</button>
+          <button id="btnMarkReview" type="button" class="btn-mini">☆ Repasar luego</button>
+        </div>
+      </div>
+
+      <div id="diffBlock" class="block-card hidden">
+        <div class="block-title">
+          <span>🔍 Corrección palabra por palabra</span>
+          <span>🟢 Bien · 🟡 Casi · 🔴 Corregir · 🔵 Faltó</span>
+        </div>
+        <div id="diffTokens" class="tokens-wrap"></div>
+      </div>
+
+      <div class="block-card">
+        <div class="block-title">
+          <span id="mainSolutionTitle">🎯 Solución Principal</span>
+          <div style="display: flex; gap: 6px;">
+            <button id="btnPlaySolNormal" type="button" class="btn-mini">🔊 Oír Inglés</button>
+            <button id="btnPlaySolSlow" type="button" class="btn-mini">🐢 Despacio</button>
+          </div>
+        </div>
+        <div id="mainSolutionText" class="solution-highlight"></div>
+      </div>
+
+      <div id="alertsBlock" class="alerts-list hidden"></div>
+      <div id="explanationBlock" class="explanation-box hidden"></div>
+
+      <div class="alts-card">
+        <strong id="primaryAltsTitle">✅ Otras formas válidas de decirlo:</strong>
+        <ul id="primaryAltsList"></ul>
+        <div id="secondaryAltsWrap" class="alt-en-sub hidden"></div>
+      </div>
+    </section>
+
+    <!-- PIE DE NAVEGACIÓN -->
+    <footer class="quick-footer">
+      <div class="nav-left">
+        <button id="btnPrev" type="button" class="btn-mini">⬅️ Anterior</button>
+        <button id="btnRetry" type="button" class="btn-mini">🔁 Limpiar</button>
+        <button id="btnRandom" type="button" class="btn-mini">🎲 Aleatoria</button>
+      </div>
+      <button id="btnNext" type="button" class="btn-next-fast">Siguiente frase ➡️</button>
+    </footer>
+
+    <div class="shortcuts-hint" style="text-align: center; font-size: 0.82rem; color: var(--muted);">
+      En PC: <strong>Espacio</strong> = Hablar · <strong>Enter</strong> = Ver solución / Siguiente · <strong>← / →</strong> = Cambiar frase
+    </div>
+  </div>
+
+  <!-- MODAL SENCILLO PARA INSTALAR EN SAMSUNG / IPHONE -->
+  <div id="qrModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong style="font-size: 1.05rem; color: #6ee7b7;">📲 Llevar en tu Samsung o iPhone</strong>
+        <button id="btnCloseQr" type="button" class="btn-mini">✕ Cerrar</button>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;">
+        <img src="./icons/qr-github-pages.svg" alt="Código QR Inglés Fácil" style="width: 165px; height: 165px; background: #fff; padding: 6px; border-radius: 14px;" />
+        <button id="btnInstallDirect" type="button" class="btn-next-fast hidden" style="width: 100%;">
+          📲 Instalar App ahora
+        </button>
+        <div style="font-size: 0.88rem; color: #cbd5e1; word-break: break-all;">
+          https://jc2803740-collab.github.io/traductor-app-facil/
+        </div>
+        <button id="btnShareEasy" type="button" class="btn-mini">📤 Compartir / Copiar enlace</button>
+      </div>
+      <div style="font-size: 0.88rem; color: #e2e8f0; background: rgba(15,23,42,0.7); padding: 12px; border-radius: 12px;">
+        <strong>📱 Samsung (Android):</strong> abre en Chrome → menú <strong>⋮ → Instalar aplicación</strong>.<br />
+        <strong style="display: inline-block; margin-top: 6px;">🍎 iPhone (Safari):</strong> pulsa abajo <strong>Compartir (⬆️) → Añadir a pantalla de inicio</strong>.
+      </div>
+    </div>
+  </div>
+
+  <script src="./exercises.js?v=1"></script>
+  <script src="./app.js?v=1"></script>
+</body>
+</html>
