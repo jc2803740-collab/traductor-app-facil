@@ -16,7 +16,9 @@
   const IS_LOCALHOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
   const state = {
-    direction: "en2es", // "en2es" | "es2en"
+    viewMode: "practice", // "practice" | "free"
+    direction: "en2es",   // "en2es" | "es2en"
+    freeDir: "es2en",     // "es2en" | "en2es"
     cat: "all",
     level: "ALL",
     autoSpeak: false,
@@ -25,6 +27,7 @@
     currentIndex: 0,
     currentExercise: null,
     isListening: false,
+    listenTarget: "practice", // "practice" | "free"
     recognition: null,
     finalTranscript: "",
     interimTranscript: "",
@@ -33,10 +36,15 @@
     voices: [],
     ttsUnlocked: false,
     deferredInstallPrompt: null,
+    freeDebounceTimer: null,
+    freeAbortCtrl: null,
+    lastFreeSrc: "",
+    lastFreeOut: "",
     progress: {
       scores: {},
       favorites: {},
-      totalAttempts: 0
+      totalAttempts: 0,
+      customExercises: []
     }
   };
 
@@ -378,16 +386,16 @@
   }
 
   let speakTimer = null;
-  function speakEnglish(text, rate = 0.92) {
+  function speakTextLang(text, langCode, rate = 0.92) {
     if (!text || !("speechSynthesis" in window)) return;
     if (state.isListening) stopListening(false);
     if (speakTimer) clearTimeout(speakTimer);
 
     const run = () => {
       const utter = new SpeechSynthesisUtterance(text);
-      const voice = pickBestVoice("en-US");
+      const voice = pickBestVoice(langCode);
       if (voice) utter.voice = voice;
-      utter.lang = "en-US";
+      utter.lang = langCode;
       utter.rate = rate;
       window.speechSynthesis.speak(utter);
     };
@@ -400,6 +408,14 @@
       }
     }
     run();
+  }
+
+  function speakEnglish(text, rate = 0.92) {
+    speakTextLang(text, "en-US", rate);
+  }
+
+  function speakSpanish(text, rate = 0.98) {
+    speakTextLang(text, "es-ES", rate);
   }
 
   function mergeFinalSegment(existing, incoming) {
@@ -474,10 +490,34 @@
     el.btnCloseQr = document.getElementById("btnCloseQr");
     el.btnInstallDirect = document.getElementById("btnInstallDirect");
     el.btnShareEasy = document.getElementById("btnShareEasy");
+
+    // Selector de modo y Traductor Libre
+    el.btnModePractice = document.getElementById("btnModePractice");
+    el.btnModeFree = document.getElementById("btnModeFree");
+    el.practiceSection = document.getElementById("practiceSection");
+    el.freeTranslatorSection = document.getElementById("freeTranslatorSection");
+    el.btnFreeDirToggle = document.getElementById("btnFreeDirToggle");
+    el.btnFreeSpeakSrc = document.getElementById("btnFreeSpeakSrc");
+    el.btnFreeClear = document.getElementById("btnFreeClear");
+    el.freeInput = document.getElementById("freeInput");
+    el.btnFreeMic = document.getElementById("btnFreeMic");
+    el.freeMicLabel = document.getElementById("freeMicLabel");
+    el.btnFreeTranslateNow = document.getElementById("btnFreeTranslateNow");
+    el.freeResultTitle = document.getElementById("freeResultTitle");
+    el.freeStatusBadge = document.getElementById("freeStatusBadge");
+    el.freeOutput = document.getElementById("freeOutput");
+    el.freeAltsChips = document.getElementById("freeAltsChips");
+    el.freeWordChipsWrap = document.getElementById("freeWordChipsWrap");
+    el.freeWordChips = document.getElementById("freeWordChips");
+    el.btnFreePlayOut = document.getElementById("btnFreePlayOut");
+    el.btnFreePlayOutSlow = document.getElementById("btnFreePlayOutSlow");
+    el.btnFreeCopy = document.getElementById("btnFreeCopy");
+    el.btnFreeSaveCustom = document.getElementById("btnFreeSaveCustom");
   }
 
   const CAT_LABELS = {
     repaso_isra: "🔥 REPASO ISRA",
+    custom: "⭐ Guardadas",
     greetings: "👋 Saludos",
     daily: "🏠 Rutina",
     food: "🍽️ Comida",
@@ -494,6 +534,7 @@
         const d = JSON.parse(raw);
         if (d && typeof d === "object") {
           state.progress = Object.assign(state.progress, d);
+          if (!Array.isArray(state.progress.customExercises)) state.progress.customExercises = [];
         }
       }
       const savedPx = parseInt(localStorage.getItem("traductor_facil_fontsize") || "", 10);
@@ -524,8 +565,14 @@
     return copy;
   }
 
-  function applyFilters() {
+  function getAllExercises() {
     const base = Array.isArray(window.BASIC_EXERCISES) ? window.BASIC_EXERCISES : [];
+    const custom = Array.isArray(state.progress.customExercises) ? state.progress.customExercises : [];
+    return [...custom, ...base];
+  }
+
+  function applyFilters() {
+    const base = getAllExercises();
     const filtered = base.filter(ex => {
       if (state.cat === "review") {
         const sc = state.progress.scores[ex.id];
@@ -616,15 +663,16 @@
     }
   }
 
-  function startListening() {
-    if (!state.currentExercise) return;
+  function startListening(targetMode = "practice") {
+    if (targetMode === "practice" && !state.currentExercise) return;
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
       el.browserWarning.innerHTML = IS_IOS
-        ? "📱 En iPhone abre este enlace en <strong>Safari</strong> para usar el botón Hablar, o pulsa la caja de abajo y usa el micro 🎙️ del teclado."
+        ? "📱 En iPhone abre este enlace en <strong>Safari</strong> para usar el botón Hablar, o pulsa la caja de texto y usa el micro 🎙️ del teclado."
         : "📱 Abre la app en <strong>Chrome / Safari / Edge</strong> o usa el micro 🎙️ del teclado de tu móvil.";
       el.browserWarning.classList.remove("hidden");
-      el.manualInput.focus();
+      if (targetMode === "practice") el.manualInput.focus();
+      else el.freeInput.focus();
       return;
     }
 
@@ -634,24 +682,35 @@
     }
 
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    el.resultPanel.classList.add("hidden");
+    if (targetMode === "practice") el.resultPanel.classList.add("hidden");
 
+    state.listenTarget = targetMode;
     state.finalTranscript = "";
     state.interimTranscript = "";
     state.altTranscripts = ["", "", "", ""];
     state.isListening = true;
 
-    el.btnMic.classList.add("listening");
-    el.micLabel.textContent = "⏹ Detener y Corregir";
-    el.liveStatus.textContent = state.direction === "en2es"
-      ? "🎙️ Te escucho en ESPAÑOL..."
-      : "🎙️ Te escucho en INGLÉS...";
-    el.liveStatus.className = "live-status";
-    el.liveStatus.classList.remove("hidden");
+    const listenLang = targetMode === "practice"
+      ? (state.direction === "en2es" ? "es-ES" : "en-US")
+      : (state.freeDir === "es2en" ? "es-ES" : "en-US");
+
+    if (targetMode === "practice") {
+      el.btnMic.classList.add("listening");
+      el.micLabel.textContent = "⏹ Detener y Corregir";
+      el.liveStatus.textContent = listenLang === "es-ES"
+        ? "🎙️ Te escucho en ESPAÑOL..."
+        : "🎙️ Te escucho en INGLÉS...";
+      el.liveStatus.className = "live-status";
+      el.liveStatus.classList.remove("hidden");
+    } else {
+      el.btnFreeMic.classList.add("listening");
+      el.freeMicLabel.textContent = "⏹ Detener dictado";
+      el.freeStatusBadge.textContent = "🎙️ Escuchando...";
+    }
 
     const rec = new SpeechRec();
     state.recognition = rec;
-    rec.lang = state.direction === "en2es" ? "es-ES" : "en-US";
+    rec.lang = listenLang;
     rec.continuous = !IS_MOBILE;
     rec.interimResults = true;
     rec.maxAlternatives = 4;
@@ -674,8 +733,12 @@
       state.interimTranscript = interim.trim();
       const combined = mergeFinalSegment(state.finalTranscript, state.interimTranscript);
       if (combined) {
-        el.liveStatus.textContent = combined;
-        el.manualInput.value = combined;
+        if (state.listenTarget === "practice") {
+          el.liveStatus.textContent = combined;
+          el.manualInput.value = combined;
+        } else {
+          el.freeInput.value = combined;
+        }
       }
 
       if (state.silenceTimer) clearTimeout(state.silenceTimer);
@@ -688,17 +751,25 @@
 
     rec.onerror = ev => {
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
-        el.liveStatus.textContent = "🔒 Permite el micrófono en el icono del navegador arriba.";
+        if (state.listenTarget === "practice") {
+          el.liveStatus.textContent = "🔒 Permite el micrófono en el icono del navegador arriba.";
+        } else {
+          el.freeStatusBadge.textContent = "🔒 Micrófono bloqueado";
+        }
         stopListening(false);
       } else if (ev.error === "no-speech") {
-        el.liveStatus.textContent = "⚠️ No se oyó nada. Vuelve a pulsar Hablar o escribe abajo.";
+        if (state.listenTarget === "practice") {
+          el.liveStatus.textContent = "⚠️ No se oyó nada. Vuelve a pulsar Hablar o escribe abajo.";
+        }
         stopListening(false);
       }
     };
 
     rec.onend = () => {
       if (state.isListening) {
-        const txt = mergeFinalSegment(state.finalTranscript, state.interimTranscript) || el.manualInput.value.trim();
+        const txt = state.listenTarget === "practice"
+          ? (mergeFinalSegment(state.finalTranscript, state.interimTranscript) || el.manualInput.value.trim())
+          : (mergeFinalSegment(state.finalTranscript, state.interimTranscript) || el.freeInput.value.trim());
         stopListening(txt.length > 0);
       }
     };
@@ -715,9 +786,12 @@
       clearTimeout(state.silenceTimer);
       state.silenceTimer = null;
     }
+    const targetMode = state.listenTarget;
     state.isListening = false;
     el.btnMic.classList.remove("listening");
     el.micLabel.textContent = state.direction === "en2es" ? "🎙️ Hablar en Español" : "🎙️ Hablar en Inglés";
+    el.btnFreeMic.classList.remove("listening");
+    el.freeMicLabel.textContent = state.freeDir === "es2en" ? "🎙️ Dictar en Español" : "🎙️ Dictar en Inglés";
 
     if (state.recognition) {
       try {
@@ -727,13 +801,25 @@
       state.recognition = null;
     }
 
-    const spoken = mergeFinalSegment(state.finalTranscript, state.interimTranscript) || el.manualInput.value.trim();
-    if (shouldEval && spoken) {
-      el.liveStatus.textContent = `🗣️ Has dicho: «${spoken}»`;
-      el.liveStatus.className = "live-status done";
-      el.liveStatus.classList.remove("hidden");
-      el.manualInput.value = spoken;
-      evaluateAnswer(spoken, [spoken, ...state.altTranscripts.filter(Boolean)]);
+    const rawSpoken = mergeFinalSegment(state.finalTranscript, state.interimTranscript);
+
+    if (targetMode === "practice") {
+      const spoken = rawSpoken || el.manualInput.value.trim();
+      if (shouldEval && spoken) {
+        el.liveStatus.textContent = `🗣️ Has dicho: «${spoken}»`;
+        el.liveStatus.className = "live-status done";
+        el.liveStatus.classList.remove("hidden");
+        el.manualInput.value = spoken;
+        evaluateAnswer(spoken, [spoken, ...state.altTranscripts.filter(Boolean)]);
+      }
+    } else {
+      const freeTxt = rawSpoken || el.freeInput.value.trim();
+      if (shouldEval && freeTxt) {
+        el.freeInput.value = freeTxt;
+        translateFreeText(freeTxt);
+      } else {
+        el.freeStatusBadge.textContent = "Automático al escribir";
+      }
     }
   }
 
@@ -924,7 +1010,267 @@
     }, 60);
   }
 
+  // ==========================================================================
+  // 4. TRADUCTOR DE TEXTO LIBRE PARA ISRA Y GOIKO
+  // ==========================================================================
+
+  function switchMainMode(mode) {
+    if (state.isListening) stopListening(false);
+    state.viewMode = mode;
+    const isPractice = mode === "practice";
+    el.practiceSection.classList.toggle("hidden", !isPractice);
+    el.freeTranslatorSection.classList.toggle("hidden", isPractice);
+    el.btnModePractice.classList.toggle("active", isPractice);
+    el.btnModeFree.classList.toggle("active", !isPractice);
+  }
+
+  function updateFreeDirUI() {
+    const isEs2En = state.freeDir === "es2en";
+    el.btnFreeDirToggle.textContent = isEs2En
+      ? "🇪🇸 Español → 🇬🇧 Inglés ⇄"
+      : "🇬🇧 Inglés → 🇪🇸 Español ⇄";
+    el.freeMicLabel.textContent = isEs2En
+      ? "🎙️ Dictar en Español"
+      : "🎙️ Dictar en Inglés";
+    el.freeResultTitle.textContent = isEs2En
+      ? "🇬🇧 TRADUCCIÓN AL INGLÉS:"
+      : "🇪🇸 TRADUCCIÓN AL ESPAÑOL:";
+    el.freeInput.placeholder = isEs2En
+      ? "Escribe aquí en español cualquier palabra, frase o ejercicio que quieras traducir al inglés..."
+      : "Escribe aquí en inglés cualquier palabra o frase que quieras traducir al español...";
+  }
+
+  function renderEnglishWordChipsForFree(englishSentence) {
+    el.freeWordChips.innerHTML = "";
+    const words = (englishSentence || "").split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      el.freeWordChipsWrap.classList.add("hidden");
+      return;
+    }
+    el.freeWordChipsWrap.classList.remove("hidden");
+    words.forEach(w => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "word-chip";
+      btn.textContent = w;
+      const clean = w.replace(/[^a-zA-Z0-9'-]/g, "");
+      btn.onclick = () => speakEnglish(clean || w, 0.74);
+      el.freeWordChips.appendChild(btn);
+    });
+  }
+
+  async function translateFreeText(rawInput) {
+    const text = (rawInput !== undefined ? rawInput : el.freeInput.value).trim();
+    if (!text) {
+      state.lastFreeSrc = "";
+      state.lastFreeOut = "";
+      el.freeOutput.textContent = "Escribe arriba cualquier texto y aquí verás la traducción al instante...";
+      el.freeOutput.classList.add("free-result-empty");
+      el.freeAltsChips.classList.add("hidden");
+      el.freeWordChipsWrap.classList.add("hidden");
+      el.freeStatusBadge.textContent = "Automático al escribir";
+      return;
+    }
+
+    const isEs2En = state.freeDir === "es2en";
+    const normQ = (isEs2En ? normalizeSpanishTokens(text) : normalizeEnglishTokens(text)).join(" ");
+
+    // 1. Comprobar primero en nuestro banco local de frases de Isra y Goiko (instantáneo y offline)
+    const localHit = getAllExercises().find(ex => {
+      const list = isEs2En ? [ex.es, ...(ex.altsEs || [])] : [ex.en, ...(ex.alts || [])];
+      return list.some(item => (isEs2En ? normalizeSpanishTokens(item) : normalizeEnglishTokens(item)).join(" ") === normQ);
+    });
+
+    if (localHit) {
+      const out = isEs2En ? localHit.en : localHit.es;
+      const alts = isEs2En ? (localHit.alts || []) : (localHit.altsEs || []);
+      state.lastFreeSrc = text;
+      state.lastFreeOut = out;
+      el.freeStatusBadge.textContent = "⚡ Frase del entrenador";
+      el.freeOutput.textContent = out;
+      el.freeOutput.classList.remove("free-result-empty");
+      renderFreeAlts(alts);
+      renderEnglishWordChipsForFree(isEs2En ? out : text);
+      return;
+    }
+
+    // 2. Traducción neuronal automática online
+    if (state.freeAbortCtrl) state.freeAbortCtrl.abort();
+    const ctrl = new AbortController();
+    state.freeAbortCtrl = ctrl;
+
+    el.freeStatusBadge.textContent = "⏳ Traduciendo...";
+    const sl = isEs2En ? "es" : "en";
+    const tl = isEs2En ? "en" : "es";
+
+    try {
+      let translated = "";
+      let alts = [];
+      try {
+        const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&dt=bd&q=${encodeURIComponent(text)}`;
+        const res = await fetch(gUrl, { signal: ctrl.signal });
+        if (res.ok) {
+          const data = await res.json();
+          translated = Array.isArray(data[0])
+            ? data[0].map(seg => (seg && seg[0]) ? seg[0] : "").join("").trim()
+            : "";
+          if (Array.isArray(data[1])) {
+            data[1].forEach(entry => {
+              if (Array.isArray(entry[1])) {
+                entry[1].slice(0, 5).forEach(w => {
+                  if (w && w.toLowerCase() !== translated.toLowerCase() && !alts.includes(w)) alts.push(w);
+                });
+              }
+            });
+          }
+        }
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+      }
+
+      if (!translated) {
+        const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sl}|${tl}`, { signal: ctrl.signal });
+        if (mmRes.ok) {
+          const mm = await mmRes.json();
+          translated = (mm && mm.responseData && mm.responseData.translatedText || "").trim();
+        }
+      }
+
+      if (!translated) throw new Error("No translation");
+
+      state.lastFreeSrc = text;
+      state.lastFreeOut = translated;
+      el.freeStatusBadge.textContent = "✅ Traducido";
+      el.freeOutput.textContent = translated;
+      el.freeOutput.classList.remove("free-result-empty");
+      renderFreeAlts(alts.slice(0, 5));
+      renderEnglishWordChipsForFree(isEs2En ? translated : text);
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+      el.freeStatusBadge.textContent = "⚠️ Sin internet";
+      el.freeOutput.textContent = "Necesitas conexión a internet para traducir frases nuevas.";
+      el.freeOutput.classList.add("free-result-empty");
+    }
+  }
+
+  function renderFreeAlts(alts) {
+    el.freeAltsChips.innerHTML = "";
+    if (!alts || !alts.length) {
+      el.freeAltsChips.classList.add("hidden");
+      return;
+    }
+    el.freeAltsChips.classList.remove("hidden");
+    alts.forEach(a => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dict-chip";
+      btn.textContent = a;
+      btn.onclick = () => {
+        state.lastFreeOut = a;
+        el.freeOutput.textContent = a;
+        if (state.freeDir === "es2en") {
+          renderEnglishWordChipsForFree(a);
+          speakEnglish(a, 0.9);
+        } else {
+          speakSpanish(a, 0.98);
+        }
+      };
+      el.freeAltsChips.appendChild(btn);
+    });
+  }
+
   function bindEvents() {
+    el.btnModePractice.onclick = () => switchMainMode("practice");
+    el.btnModeFree.onclick = () => switchMainMode("free");
+
+    el.btnFreeDirToggle.onclick = () => {
+      if (state.isListening) stopListening(false);
+      state.freeDir = state.freeDir === "es2en" ? "en2es" : "es2en";
+      updateFreeDirUI();
+      if (state.lastFreeOut) {
+        el.freeInput.value = state.lastFreeOut;
+        translateFreeText(state.lastFreeOut);
+      } else if (el.freeInput.value.trim()) {
+        translateFreeText(el.freeInput.value);
+      }
+    };
+
+    el.freeInput.addEventListener("input", () => {
+      if (state.freeDebounceTimer) clearTimeout(state.freeDebounceTimer);
+      const v = el.freeInput.value.trim();
+      if (!v) {
+        translateFreeText("");
+        return;
+      }
+      state.freeDebounceTimer = setTimeout(() => translateFreeText(v), 420);
+    });
+
+    el.btnFreeTranslateNow.onclick = () => {
+      if (state.freeDebounceTimer) clearTimeout(state.freeDebounceTimer);
+      translateFreeText(el.freeInput.value);
+    };
+
+    el.btnFreeMic.onclick = () => startListening("free");
+
+    el.btnFreeClear.onclick = () => {
+      if (state.isListening) stopListening(false);
+      el.freeInput.value = "";
+      translateFreeText("");
+      el.freeInput.focus();
+    };
+
+    el.btnFreeSpeakSrc.onclick = () => {
+      const src = el.freeInput.value.trim();
+      if (!src) return;
+      if (state.freeDir === "es2en") speakSpanish(src, 0.98);
+      else speakEnglish(src, 0.9);
+    };
+
+    el.btnFreePlayOut.onclick = () => {
+      if (!state.lastFreeOut) return;
+      if (state.freeDir === "es2en") speakEnglish(state.lastFreeOut, 0.9);
+      else speakSpanish(state.lastFreeOut, 0.98);
+    };
+
+    el.btnFreePlayOutSlow.onclick = () => {
+      if (!state.lastFreeOut) return;
+      if (state.freeDir === "es2en") speakEnglish(state.lastFreeOut, 0.68);
+      else speakSpanish(state.lastFreeOut, 0.78);
+    };
+
+    el.btnFreeCopy.onclick = async () => {
+      if (!state.lastFreeOut) return;
+      try {
+        await navigator.clipboard.writeText(state.lastFreeOut);
+        el.btnFreeCopy.textContent = "✅ ¡Copiado!";
+        setTimeout(() => { el.btnFreeCopy.textContent = "📋 Copiar"; }, 1800);
+      } catch (_) {}
+    };
+
+    el.btnFreeSaveCustom.onclick = () => {
+      const src = (state.lastFreeSrc || el.freeInput.value).trim();
+      const out = (state.lastFreeOut || "").trim();
+      if (!src || !out) return;
+      const es = state.freeDir === "es2en" ? src : out;
+      const en = state.freeDir === "es2en" ? out : src;
+      if (!Array.isArray(state.progress.customExercises)) state.progress.customExercises = [];
+      state.progress.customExercises.unshift({
+        id: "cust_" + Date.now(),
+        cat: "custom",
+        isVocab: false,
+        level: "A1",
+        type: "translate",
+        es,
+        en,
+        alts: [],
+        altsEs: [],
+        tip: "⭐ Frase guardada desde vuestro Traductor de Texto."
+      });
+      saveProgress();
+      el.btnFreeSaveCustom.textContent = "✅ ¡Guardada!";
+      setTimeout(() => { el.btnFreeSaveCustom.textContent = "⭐ Guardar para practicar"; }, 2000);
+    };
+
     el.btnFontDown.onclick = () => applyFontScale(state.fontPx - 1);
     el.btnFontUp.onclick = () => applyFontScale(state.fontPx + 1);
 
@@ -973,7 +1319,7 @@
       if (state.currentExercise) speakEnglish(state.currentExercise.en, 0.68);
     };
 
-    el.btnMic.onclick = () => startListening();
+    el.btnMic.onclick = () => startListening("practice");
     el.btnReveal.onclick = () => revealDirect();
 
     el.btnEvaluateText.onclick = () => {
@@ -1048,8 +1394,9 @@
 
     // Teclado en PC
     document.addEventListener("keydown", e => {
+      if (state.viewMode !== "practice") return;
       const tag = (document.activeElement && document.activeElement.tagName) || "";
-      if (tag === "INPUT" || tag === "SELECT" || !el.qrModal.classList.contains("hidden")) return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !el.qrModal.classList.contains("hidden")) return;
       if (e.code === "Space") { e.preventDefault(); el.btnMic.click(); }
       else if (e.code === "Enter") {
         e.preventDefault();
@@ -1108,6 +1455,7 @@
     loadProgress();
     applyFontScale(state.fontPx);
     initVoices();
+    updateFreeDirUI();
     bindEvents();
     applyFilters();
   }

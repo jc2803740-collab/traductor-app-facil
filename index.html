@@ -94,6 +94,87 @@
       font-weight: 600;
     }
 
+    .mode-switch-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .mode-switch-btn {
+      background: rgba(30, 41, 59, 0.85);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 0.98rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      text-align: center;
+    }
+    .mode-switch-btn.active {
+      background: linear-gradient(135deg, #059669, #0284c7);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+    }
+
+    .free-card {
+      background: var(--panel);
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.36);
+    }
+    textarea.free-textarea {
+      width: 100%;
+      min-height: 110px;
+      resize: vertical;
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 1.08rem;
+      font-weight: 600;
+      line-height: 1.45;
+      font-family: inherit;
+    }
+    textarea.free-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .free-result-box {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(52, 211, 153, 0.38);
+      border-radius: 16px;
+      padding: 20px 18px;
+      min-height: 92px;
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #ecfdf5;
+      line-height: 1.42;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .free-result-empty {
+      color: var(--muted);
+      font-size: 1.02rem;
+      font-weight: 600;
+    }
+    .dict-chip {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      color: #bae6fd;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
     /* Barra superior sencilla estilo Modo Rápido */
     .quick-topbar {
       display: flex;
@@ -590,9 +671,23 @@
     <!-- CABECERA PRINCIPAL PERSONALIZADA -->
     <div class="hero-banner">
       <h1>🎓 ENTRENADOR DE INGLÉS PARA ISRA Y GOIKO</h1>
-      <p>Vocabulario y Frases del Libro (Units 3, 4 y 5) + Inglés Práctico por Voz</p>
+      <p>Repaso del Libro (Units 3, 4 y 5) · Práctica por Voz · Traductor Libre</p>
     </div>
 
+    <!-- SELECTOR RÁPIDO: PRACTICAR FRASES vs TRADUCTOR DE TEXTO LIBRE -->
+    <div class="mode-switch-bar">
+      <button id="btnModePractice" type="button" class="mode-switch-btn active">
+        🎯 Practicar Frases
+      </button>
+      <button id="btnModeFree" type="button" class="mode-switch-btn">
+        🌐 Traductor de Texto
+      </button>
+    </div>
+
+    <!-- ===================================================================
+         VISTA 1: MODO RÁPIDO DE FRASES (ACTIVA POR DEFECTO)
+         =================================================================== -->
+    <div id="practiceSection" style="display: flex; flex-direction: column; gap: 14px;">
     <!-- BARRA SUPERIOR MODO RÁPIDO FÁCIL -->
     <header class="quick-topbar">
       <div class="top-left">
@@ -609,6 +704,7 @@
         <select id="catSelect" class="mini-select" aria-label="Elegir tema">
           <option value="all">🌍 Todos los temas</option>
           <option value="repaso_isra">🔥 REPASO ISRA (Libro Units 3, 4 y 5)</option>
+          <option value="custom">⭐ Mis Frases Guardadas</option>
           <option value="greetings">👋 Saludos y Presentaciones</option>
           <option value="daily">🏠 Casa, Familia y Rutina</option>
           <option value="food">🍽️ Cafetería y Restaurante</option>
@@ -733,6 +829,62 @@
     <div class="shortcuts-hint" style="text-align: center; font-size: 0.82rem; color: var(--muted);">
       En PC: <strong>Espacio</strong> = Hablar · <strong>Enter</strong> = Ver solución / Siguiente · <strong>← / →</strong> = Cambiar frase
     </div>
+    </div> <!-- Fin #practiceSection -->
+
+    <!-- ===================================================================
+         VISTA 2: TRADUCTOR DE TEXTO LIBRE (ESCRIBIR O DICTAR CUALQUIER COSA)
+         =================================================================== -->
+    <section id="freeTranslatorSection" class="free-card hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button id="btnFreeDirToggle" type="button" class="dir-btn">
+          🇪🇸 Español → 🇬🇧 Inglés ⇄
+        </button>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button id="btnFreeSpeakSrc" type="button" class="btn-mini" title="Escuchar lo que has escrito">🔊 Oír texto</button>
+          <button id="btnFreeClear" type="button" class="btn-mini">✕ Borrar</button>
+        </div>
+      </div>
+
+      <textarea
+        id="freeInput"
+        class="free-textarea"
+        placeholder="Escribe aquí cualquier palabra, frase o ejercicio que quieras traducir..."
+      ></textarea>
+
+      <div class="primary-actions" style="margin-bottom: 0;">
+        <button id="btnFreeMic" type="button" class="btn-speak-main">
+          <span id="freeMicLabel">🎙️ Dictar en Español</span>
+        </button>
+        <button id="btnFreeTranslateNow" type="button" class="btn-reveal-main">
+          ⚡ Traducir texto
+        </button>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 4px;">
+        <span id="freeResultTitle" class="dir-instruction">🇬🇧 TRADUCCIÓN AL INGLÉS:</span>
+        <span id="freeStatusBadge" class="counter-pill">Automático al escribir</span>
+      </div>
+
+      <div id="freeOutput" class="free-result-box free-result-empty">Escribe arriba cualquier texto y aquí verás la traducción al instante...</div>
+
+      <div id="freeAltsChips" class="tokens-wrap hidden"></div>
+
+      <div id="freeWordChipsWrap" class="block-card hidden">
+        <div class="block-title" style="margin-bottom: 8px;">
+          <span>🗣️ Toca cualquier palabra en inglés para oír cómo se pronuncia despacio:</span>
+        </div>
+        <div id="freeWordChips" class="tokens-wrap"></div>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="btnFreePlayOut" type="button" class="btn-mini">🔊 Escuchar traducción</button>
+        <button id="btnFreePlayOutSlow" type="button" class="btn-mini">🐢 Escuchar despacio</button>
+        <button id="btnFreeCopy" type="button" class="btn-mini">📋 Copiar</button>
+        <button id="btnFreeSaveCustom" type="button" class="btn-mini" style="border-color: rgba(250, 204, 21, 0.5); color: #fde047;">
+          ⭐ Guardar para practicar
+        </button>
+      </div>
+    </section>
   </div>
 
   <!-- MODAL SENCILLO PARA INSTALAR EN SAMSUNG / IPHONE -->
@@ -759,7 +911,7 @@
     </div>
   </div>
 
-  <script src="./exercises.js?v=1"></script>
-  <script src="./app.js?v=1"></script>
+  <script src="./exercises.js?v=2"></script>
+  <script src="./app.js?v=2"></script>
 </body>
 </html>
